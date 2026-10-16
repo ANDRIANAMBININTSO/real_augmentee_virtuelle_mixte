@@ -18,6 +18,11 @@ Puis, lecture de la vidéo dans la fenêtre.
 
 Prochaines étapes : Structurer le code, créer des points virtuels et tester la fiabilité du code actuel directement via une caméra ou via d'autres fichiers mp4. 
 
+## Etape 2 : Trouver et trier les coins de la feuille blanche
 
+Une fois qu'on a les points de contours(sous forme de tableau de points), ils sont approximés avec un polygone(ici un quadrilatère).
+- La fonction **approxPolyDP** nous permet d'obtenir les 4 coins du quadrilatère.
+- Les 4 coins sont ensuite triés par la fonction **sortcorners**.
 
-
+![tri de coins](images/tri_coins.png)
+# Etape 3 : Placer le repère 
