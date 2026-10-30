@@ -1,10 +1,14 @@
-// video.cpp
 #include "video.hpp"
 #include <stdexcept>
 
 Video::Video(const std::string& path) : capture_(path) {
   if (!capture_.isOpened())
     throw std::runtime_error("Impossible d'ouvrir la vidéo : " + path);
+  fps_ = capture_.get(cv::CAP_PROP_FPS);
+}
+Video::Video(int num): capture_(num) {
+  if (!capture_.isOpened())
+    throw std::runtime_error("Impossible d'ouvrir la caméra");
   fps_ = capture_.get(cv::CAP_PROP_FPS);
 }
 

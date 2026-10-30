@@ -1,0 +1,66 @@
+#include "detection.hpp"
+
+namespace detection {
+
+    vector<Point2f> sortCorners(const vector<Point2f>& pts) {
+        vector<Point2f> sorted(4);
+        double minSum = 1e18, maxSum = -1e18, minDiff = 1e18, maxDiff = -1e18;
+        for (const Point2f& p : pts) {
+            double sum = p.x + p.y;    // petit en haut à gauche, grand en bas à droite
+            double diff = p.y - p.x;   // petit en haut à droite, grand en bas à gauche
+            if (sum < minSum)   { minSum = sum;   sorted[0] = p; }  // haut-gauche
+            if (diff < minDiff) { minDiff = diff; sorted[1] = p; }  // haut-droit
+            if (sum > maxSum)   { maxSum = sum;   sorted[2] = p; }  // bas-droit
+            if (diff > maxDiff) { maxDiff = diff; sorted[3] = p; }  // bas-gauche
+        }
+        return sorted;
+    }
+    
+    vector<Point2f> findCorners(const vector<Point>& contour) {
+    // on simplifie le contour en polygone : une feuille doit donner 4 sommets
+        vector<Point> approx;
+        approxPolyDP(contour, approx, 0.02 * arcLength(contour, true), true);
+        
+        vector<Point2f> pts;
+        if (approx.size() == 4 && isContourConvex(approx)) {
+            for (const Point& p : approx) pts.push_back(Point2f(p));
+        } else {
+            // contour bruité : on se rabat sur le rectangle orienté qui l'englobe (toujours 4 coins)
+            Point2f box[4];
+            minAreaRect(contour).points(box);
+            pts.assign(box, box + 4);
+        }
+        return sortCorners(pts);
+    }
+    
+    Mat segmentSheet(const Mat& frame){
+        Mat grey, blurred, binary;
+        cvtColor(frame, grey, COLOR_BGR2GRAY);
+        GaussianBlur(grey, blurred, Size(9,9), 0);
+        threshold(blurred, binary, 0, 255, THRESH_BINARY | THRESH_OTSU);
+        return binary;
+    }
+
+    bool findLargestContour(const Mat& binary, vector<Point>& largest){
+        vector<vector<Point>> contours;
+        findContours(binary, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+        double maxArea = 0.0;
+        for (const auto& c: contours){
+            double area = contourArea(c);
+            if(area > maxArea){
+                maxArea = area;
+                largest = c;
+            }
+        }
+        return maxArea > 0.0;
+    }
+    void drawSheet(Mat& frame, const vector<Point2f>& corners){
+        vector<Point> quad(corners.begin(), corners.end());
+        polylines(frame, quad, true, Scalar(0,0,255), 2);
+        for (int i=0; i<4; i++){
+            circle(frame, corners[i], 6, Scalar(0,255,255), FILLED);
+            putText(frame, to_string(i), corners[i] + Point2f(8,-8),FONT_HERSHEY_SIMPLEX, 0.8, Scalar(0,255,255),2);
+        }
+    }
+}
+

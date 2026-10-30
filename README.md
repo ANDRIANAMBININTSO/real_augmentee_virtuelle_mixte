@@ -25,4 +25,10 @@ Une fois qu'on a les points de contours(sous forme de tableau de points), ils so
 - Les 4 coins sont ensuite triés par la fonction **sortcorners**.
 
 ![tri de coins](images/tri_coins.png)
-# Etape 3 : Placer le repère 
+# Etape 3 : Placer le repère
+
+# Etape intermédiaire : Ranger le code
+Voici comment nous avons rangé le code:
+- Une classe dédiée pour gérer le flux vidéo (caméra ou fichier local).
+- Des fichiers qui regroupent toutes les fonctions permettant : la détection de la feuille, le tri des coins, etc.
+- Un fichier main qui initiliase le contexte OpenGL et qui contient lance tout.

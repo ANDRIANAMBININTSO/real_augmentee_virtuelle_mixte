@@ -9,11 +9,18 @@ find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(OpenCV REQUIRED)
 
-include_directories(${CMAKE_SOURCE_DIR}/glm)
-include_directories(${OpenCV_INCLUDE_DIRS})
 
-add_executable(main main.cpp)
 
+add_executable(main 
+    src/detection.cpp
+    src/video.cpp
+    src/main.cpp
+)
+
+target_include_directories(main PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/
+    ${OpenCV_INCLUDE_DIRS}
+)
 target_link_libraries(main glfw)
 target_link_libraries(main OpenGL::GL)
 target_link_libraries(main GLEW::GLEW)
