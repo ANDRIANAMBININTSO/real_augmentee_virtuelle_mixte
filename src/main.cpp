@@ -26,8 +26,10 @@ int main() {
     glfwMakeContextCurrent(window);
     
     
-    // on ouvre la video
-    Video video(1);
+    // pour ouvrir la caméra 
+    //Video video(0);
+    // pour ouvir une vidéo 
+    Video video("../input/input_1.mp4");
     
     // checker les fps de la video : 30 fps
     double fps = video.fps();
@@ -52,7 +54,7 @@ int main() {
     double dureeFrame = 1.0/fps;
     Mat frame;
     Mat binary;
-    // tant qu'on ne ferme pas la fenêtre (1 boucle, 1 image)
+    // tant qu'on ne ferme pas la fenêtre 
     while (!glfwWindowShouldClose(window)) {
         glClear(GL_COLOR_BUFFER_BIT);
     
@@ -87,11 +89,29 @@ int main() {
         }
     
         // on dessine le carré dans lequel on va mettre la texture
+        // pour pouvoir afficher toutes les videos (peut importe le format) correctement
+        // ratio de la fenêtre et de la vidéo
+        int winW, winH;
+        glfwGetFramebufferSize(window, &winW, &winH);
+        double winRatio = (double)winW / winH;
+        double vidRatio = (double)frame.cols / frame.rows;
+
+        // par défaut, on remplit tout
+        float sx = 1.0f, sy = 1.0f;
+
+        if (vidRatio > winRatio) {
+            // vidéo plus large que la fenêtre : bandes en haut et en bas
+            sy = winRatio / vidRatio;
+        } else {
+            // vidéo plus haute que la fenêtre : bandes sur les côtés
+            sx = vidRatio / winRatio;
+        }
+
         glBegin(GL_QUADS);
-        glTexCoord2f(0, 0); glVertex2f(-1, -1);   // coin bas gauche
-        glTexCoord2f(1, 0); glVertex2f( 1, -1);   // coin bas droit
-        glTexCoord2f(1, 1); glVertex2f( 1, 1);   // coin haut droit
-        glTexCoord2f(0, 1); glVertex2f(-1, 1);   // coin haut gauche
+        glTexCoord2f(0, 0); glVertex2f(-sx, -sy);
+        glTexCoord2f(1, 0); glVertex2f( sx, -sy);
+        glTexCoord2f(1, 1); glVertex2f( sx,  sy);
+        glTexCoord2f(0, 1); glVertex2f(-sx,  sy);
         glEnd();
     
         // back buffer (dessin) devient le front buffer (visible)
