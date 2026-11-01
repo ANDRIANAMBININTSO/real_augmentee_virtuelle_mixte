@@ -1,12 +1,10 @@
-
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/calib3d.hpp>
- 
+
 #include <GLFW/glfw3.h>
 #include <stdio.h>
- 
+
 #include <iostream>
 using namespace cv;
 using namespace std;
@@ -14,22 +12,47 @@ using namespace std;
  
 // Trie les 4 coins dans un ordre fixe : haut-gauche, haut-droit, bas-droit, bas-gauche
 // (indispensable pour associer chaque coin de l'image au bon coin de la vraie feuille)
-static vector<Point2f> sortCorners(const vector<Point2f>& pts) {
+static vector<Point2f> sortCorners(const vector<Point2f>& pts, vector<Point2f>& prevCorners) {
   vector<Point2f> sorted(4);
-  double minSum = 1e18, maxSum = -1e18, minDiff = 1e18, maxDiff = -1e18;
-  for (const Point2f& p : pts) {
-    double sum = p.x + p.y;    // petit en haut à gauche, grand en bas à droite
-    double diff = p.y - p.x;   // petit en haut à droite, grand en bas à gauche
-    if (sum < minSum)   { minSum = sum;   sorted[0] = p; }  // haut-gauche
-    if (diff < minDiff) { minDiff = diff; sorted[1] = p; }  // haut-droit
-    if (sum > maxSum)   { maxSum = sum;   sorted[2] = p; }  // bas-droit
-    if (diff > maxDiff) { maxDiff = diff; sorted[3] = p; }  // bas-gauche
+
+  // si premiere boucle : calcule et ordonnancement des points
+  if (prevCorners.empty()){
+    double minSum = 1e18, maxSum = -1e18, minDiff = 1e18, maxDiff = -1e18;
+    for (const Point2f& p : pts) {
+        double sum = p.x + p.y;    // petit en haut à gauche, grand en bas à droite
+        double diff = p.y - p.x;   // petit en haut à droite, grand en bas à gauche
+        if (sum < minSum)   { minSum = sum;   sorted[0] = p; }  // haut-gauche
+        if (diff < minDiff) { minDiff = diff; sorted[1] = p; }  // haut-droit
+        if (sum > maxSum)   { maxSum = sum;   sorted[2] = p; }  // bas-droit
+        if (diff > maxDiff) { maxDiff = diff; sorted[3] = p; }  // bas-gauche
+    }
   }
+  // sinon, calcule de la position des points en fonction de leur position à la frame précédente
+  else {
+    vector<Point2f> newSortedCorners(4);
+    for (int i=0; i<pts.size(); i++){
+        double diffMin = 1e18;
+        int diffMinIdx = 0;
+        for (int j=0; j<prevCorners.size(); j++){
+            float diffX = pts[i].x - prevCorners[j].x;
+            float diffY = pts[i].y - prevCorners[j].y;
+            float diff = diffX*diffX + diffY*diffY;
+            if (diff < diffMin) {
+                diffMin = diff;
+                diffMinIdx = j;
+            }
+        }
+        newSortedCorners[diffMinIdx] = pts[i];
+    }
+    sorted = newSortedCorners;
+  }
+  prevCorners = sorted;
   return sorted;
 }
- 
+
+/*
 // Trouve les 4 coins d'un contour, déjà triés
-static vector<Point2f> findCorners(const vector<Point>& contour) {
+static vector<Point2f> findCorners(const vector<Point>& contour, vector<Point2f>& prevCorners) {
   // on simplifie le contour en polygone : une feuille doit donner 4 sommets
   vector<Point> approx;
   approxPolyDP(contour, approx, 0.02 * arcLength(contour, true), true);
@@ -43,9 +66,22 @@ static vector<Point2f> findCorners(const vector<Point>& contour) {
     minAreaRect(contour).points(box);
     pts.assign(box, box + 4);
   }
-  return sortCorners(pts);
+    return sortCorners(pts, prevCorners);
 }
+*/
+
+
+// Trouve les 4 coins d'un contour, déjà triés
+static vector<Point2f> findCorners(const vector<Point>& contour, vector<Point2f>& prevCorners) {
+  // on simplifie le contour en polygone : une feuille doit donner 4 sommets
+  vector<Point> approx;
+  approxPolyDP(contour, approx, 0.02 * arcLength(contour, true), true);
  
+  vector<Point2f> pts;
+  for (const Point& p : approx) pts.push_back(Point2f(p));
+  return sortCorners(pts, prevCorners);
+}
+
  
 int main() {
  
@@ -66,7 +102,8 @@ int main() {
  
   // on ouvre la video
   VideoCapture video;
-  video.open("../input/input.mp4");
+  //video.open("/Users/emilieb/Desktop/POLYTECH/Marseille/5A/RA/input.mp4");
+  video.open(0);
   if (!video.isOpened()) {
     fprintf(stderr, "ERROR: could not open video\n");
     return 1;
@@ -95,6 +132,8 @@ int main() {
  
   double lastFrameTime = 0;
   double currentTime;
+
+  vector<Point2f> prevCorners;
  
   // tant qu'on ne ferme pas la fenêtre (1 boucle, 1 image)
   while (!glfwWindowShouldClose(window)) {
@@ -150,11 +189,11 @@ int main() {
           maxAreaIndex = i;
         }
       }
- 
-      // 4. COINS + REPERE (seulement si on a trouvé une feuille)
+      // gestion des coins
+      vector<Point2f> corners;
       if (maxAreaIndex >= 0) {
         // les 4 coins triés : 0 = haut-gauche, 1 = haut-droit, 2 = bas-droit, 3 = bas-gauche
-        vector<Point2f> corners = findCorners(contours[maxAreaIndex]);
+        corners = findCorners(contours[maxAreaIndex], prevCorners);
  
         // contour de la feuille (rouge) + coins numérotés pour vérifier le tri
         vector<Point> quad(corners.begin(), corners.end());
@@ -165,9 +204,34 @@ int main() {
                   FONT_HERSHEY_SIMPLEX, 0.8, Scalar(0, 255, 255), 2);
         }
       }
+
+      // 4. POINTS ET REPERE VIRTUELS
+
+      // création des points virtuels (3D)
+      vector <Point3f> virtualPoints = {
+        {-148.5f, 105.f, 0.f}, // point haut gauche
+        {148.5f, 105.f, 0.f}, // point haut droite
+        {148.5f, -105.f, 0.f}, // point bas droite
+        {-148.5f, -105.f, 0.f} // point bas gauche
+      };
+      Point3f sheetCenter = {0.f, 0.f, 0.f}; // point central
+      Point3f virtCorner1 = virtualPoints[0];
+      Point3f virtCorner2 = virtualPoints[1];
+      Point3f virtCorner3 = virtualPoints[2];
+      Point3f virtCorner4 = virtualPoints[3];
+
+      // associe virtualPoints[0] à corners[0], etc
+      // cameraMatrix : Matrice intrinsèque de la caméra 3 × 3 (focales et centre optique)
+      // distCoeffs : Coefficients de distorsion de l'objectif (vecteur de 4, 5, 8 ou 12 éléments ; ou vide)
+      // rvec, tvec : vecteurs de rotation et de translation par rapport à la cam
+      rvec, tvec = solvePnP(virtualPoints, corners);
+
+
  
       // OpenGL a l'origine en bas, OpenCV en haut : on retourne l'image juste avant l'envoi
       cv::flip(frame, frame, 0);
+      // pour effet miroir
+      cv::flip(frame, frame, 1);
  
       // remplis la texture avec ces pixels
       glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, frame.cols, frame.rows, 0, GL_BGR, GL_UNSIGNED_BYTE, frame.data);
