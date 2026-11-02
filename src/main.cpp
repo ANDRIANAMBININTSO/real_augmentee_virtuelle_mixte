@@ -78,9 +78,10 @@ int main() {
         
             //Si on arrive à trouver le contour le plus grand(la feuille)
             vector<Point> largest;
+            vector<Point2f> prevCorners;
             if (detection::findLargestContour(binary, largest)) {
                 //On cherche les coins
-                vector<Point2f> corners = detection::findCorners(largest);
+                vector<Point2f> corners = detection::findCorners(largest, prevCorners);
                 //On les dessine
                 detection::drawSheet(frame, corners);
 

@@ -2,21 +2,50 @@
 
 namespace detection {
 
-    vector<Point2f> sortCorners(const vector<Point2f>& pts) {
-        vector<Point2f> sorted(4);
-        double minSum = 1e18, maxSum = -1e18, minDiff = 1e18, maxDiff = -1e18;
-        for (const Point2f& p : pts) {
-            double sum = p.x + p.y;    // petit en haut à gauche, grand en bas à droite
-            double diff = p.y - p.x;   // petit en haut à droite, grand en bas à gauche
-            if (sum < minSum)   { minSum = sum;   sorted[0] = p; }  // haut-gauche
-            if (diff < minDiff) { minDiff = diff; sorted[1] = p; }  // haut-droit
-            if (sum > maxSum)   { maxSum = sum;   sorted[2] = p; }  // bas-droit
-            if (diff > maxDiff) { maxDiff = diff; sorted[3] = p; }  // bas-gauche
+    vector<Point2f> sortCorners(vector<Point2f>& pts, vector<Point2f>& prevPts) {
+        // cas 1ere frame : on détermine l'ordre des coins dans le sens horaire
+        if (prevPts.empty()) {
+            vector<Point2f> sorted(4);
+            double minSum = 1e18, maxSum = -1e18, minDiff = 1e18, maxDiff = -1e18;
+            for (const Point2f& p : pts) {
+                double sum = p.x + p.y;    // petit en haut à gauche, grand en bas à droite
+                double diff = p.y - p.x;   // petit en haut à droite, grand en bas à gauche
+                if (sum < minSum)   { minSum = sum;   sorted[0] = p; }  // haut-gauche
+                if (diff < minDiff) { minDiff = diff; sorted[1] = p; }  // haut-droit
+                if (sum > maxSum)   { maxSum = sum;   sorted[2] = p; }  // bas-droit
+                if (diff > maxDiff) { maxDiff = diff; sorted[3] = p; }  // bas-gauche
+            }
+            return sorted;
         }
-        return sorted;
+        // cas toutes les autres frames : on détermine l'ordre des coins via leur position dans la frame précedente
+        else {
+            // verifier qu'il y a bien eu sortCorners appelé une fois ? 
+            vector<Point2f> newPts;
+            for (const Point2f& p : pts){
+                float diffMin = 1e18;
+                int diffMinIdx;
+
+                for (int i = 0; i < prevPts.size(); ++i){
+                    const Point2f& pp = prevPts[i];
+                    float diffX = p.x - pp.x;
+                    float diffY = p.y - pp.y;
+                    float diff = diffX*diffX + diffY*diffY;
+
+                    if (diff < diffMin) {
+                    diffMin = diff;
+                    diffMinIdx = i;
+                    }
+                }
+                newPts[diffMinIdx] = p;
+            }
+            pts = newPts;
+        }
+        prevPts = pts;
+        return prevPts;
     }
+
     
-    vector<Point2f> findCorners(const vector<Point>& contour) {
+    vector<Point2f> findCorners(const vector<Point>& contour, vector<Point2f>& prevPts) {
     // on simplifie le contour en polygone : une feuille doit donner 4 sommets
         vector<Point> approx;
         approxPolyDP(contour, approx, 0.02 * arcLength(contour, true), true);
@@ -30,8 +59,9 @@ namespace detection {
             minAreaRect(contour).points(box);
             pts.assign(box, box + 4);
         }
-        return sortCorners(pts);
+        return sortCorners(pts, prevPts);
     }
+
     
     Mat segmentSheet(const Mat& frame){
         Mat grey, blurred, binary;
