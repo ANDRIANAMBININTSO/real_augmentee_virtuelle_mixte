@@ -8,7 +8,7 @@ class Video{
 public:
     explicit Video(const std::string& path);
     explicit Video(int num);
-    bool read(cv::Mat& frame);
+    bool read(cv::Mat& frame, bool loop = false);
     double fps() const {return fps_;};
     bool capture(cv::Mat& frame);
 private:

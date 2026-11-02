@@ -46,8 +46,10 @@ namespace detection {
         findContours(binary, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
         double maxArea = 0.0;
         for (const auto& c: contours){
+            Rect r = boundingRect(c);
+            bool touchesBorder = r.x <= 0.0 || r.y <= 0.0 || r.x + r.width >= binary.cols || r.y + r.height >= binary.rows;
             double area = contourArea(c);
-            if(area > maxArea){
+            if(area > maxArea && !touchesBorder){
                 maxArea = area;
                 largest = c;
             }

@@ -12,6 +12,16 @@ Video::Video(int num): capture_(num) {
   fps_ = capture_.get(cv::CAP_PROP_FPS);
 }
 
-bool Video::read(cv::Mat& frame) {
+bool Video::read(cv::Mat& frame, bool loop) {
+  if (capture_.read(frame) && !frame.empty()) 
+    return true;
+  // si la video est fini et que loop est false, on coupe
+  if (!loop) 
+    return false;
+  // sinon, on recommence
+  capture_.set(cv::CAP_PROP_POS_FRAMES, 0);
   return capture_.read(frame) && !frame.empty();
+
+
+
 }

@@ -1,5 +1,6 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include <opencv2/calib3d.hpp>
 #include "detection.hpp"
 #include "video.hpp"
 
@@ -63,7 +64,7 @@ int main() {
         // on doit changer d'image
         if (currentTime - lastFrameTime >= dureeFrame) {
             // on stocke l'image dans une matrice
-            if (!(video.read(frame))) {
+            if (!(video.read(frame, true))) {
                 break;
             }
             //lastFrameTime = currentTime; // on ne fait pas ça car ça ne nous permet pas de rattraper le retard s'il y en a
@@ -71,6 +72,9 @@ int main() {
         
             //Traitement complet d'une frame
             binary = detection::segmentSheet(frame);
+            // affichage de la video en binaire
+            cv::imshow("binary", binary);
+
         
             //Si on arrive à trouver le contour le plus grand(la feuille)
             vector<Point> largest;
@@ -79,8 +83,34 @@ int main() {
                 vector<Point2f> corners = detection::findCorners(largest);
                 //On les dessine
                 detection::drawSheet(frame, corners);
+
+
+                // création des points virtuels
+                vector <Point3f> virtualPoints = {
+                    {-148.5f, 105.f, 0.f}, // point haut gauche
+                    {148.5f, 105.f, 0.f}, // point haut droite
+                    {148.5f, -105.f, 0.f}, // point bas droite
+                    {-148.5f, -105.f, 0.f} // point bas gauche
+                };
+                Point3f sheetCenter(0.f, 0.f, 0.f);
+                
+                double f = frame.cols;
+                Mat cameraMatrix = (Mat_<double>(3,3) <<
+                    f, 0, frame.cols / 2.0,
+                    0, f, frame.rows / 2.0,
+                    0, 0, 1);
+
+                Mat distCoeffs = Mat::zeros(4, 1, CV_64F);
+                Mat rvec, tvec;
+                // transforme le 2D en 3D pour la caméra
+                bool is2D = solvePnP(virtualPoints, corners, cameraMatrix, distCoeffs, rvec, tvec);
+
+                if (is2D)
+                    // dessin du repère
+                    drawFrameAxes(frame, cameraMatrix, distCoeffs, rvec, tvec, 100.f);
             }
-        
+
+
             // OpenGL a l'origine en bas, OpenCV en haut : on retourne l'image juste avant l'envoi
             cv::flip(frame, frame, 0);
         
