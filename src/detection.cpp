@@ -1,4 +1,5 @@
 #include "detection.hpp"
+#include <iostream>
 
 namespace detection {
 
@@ -15,12 +16,13 @@ namespace detection {
                 if (sum > maxSum)   { maxSum = sum;   sorted[2] = p; }  // bas-droit
                 if (diff > maxDiff) { maxDiff = diff; sorted[3] = p; }  // bas-gauche
             }
+            prevPts = sorted;          
             return sorted;
         }
         // cas toutes les autres frames : on détermine l'ordre des coins via leur position dans la frame précedente
         else {
             // verifier qu'il y a bien eu sortCorners appelé une fois ? 
-            vector<Point2f> newPts;
+            vector<Point2f> newPts(4);
             for (const Point2f& p : pts){
                 float diffMin = 1e18;
                 int diffMinIdx;
@@ -38,10 +40,9 @@ namespace detection {
                 }
                 newPts[diffMinIdx] = p;
             }
-            pts = newPts;
+            prevPts = newPts;
+            return newPts;
         }
-        prevPts = pts;
-        return prevPts;
     }
 
     
@@ -52,7 +53,9 @@ namespace detection {
         
         vector<Point2f> pts;
         if (approx.size() == 4 && isContourConvex(approx)) {
-            for (const Point& p : approx) pts.push_back(Point2f(p));
+            for (const Point& p : approx) {
+                pts.push_back(Point2f(p));
+            }
         } else {
             // contour bruité : on se rabat sur le rectangle orienté qui l'englobe (toujours 4 coins)
             Point2f box[4];
@@ -67,7 +70,9 @@ namespace detection {
         Mat grey, blurred, binary;
         cvtColor(frame, grey, COLOR_BGR2GRAY);
         GaussianBlur(grey, blurred, Size(9,9), 0);
-        threshold(blurred, binary, 0, 255, THRESH_BINARY | THRESH_OTSU);
+        //threshold(blurred, binary, 0, 255, THRESH_BINARY | THRESH_OTSU);
+        // pour tricher
+        threshold(blurred, binary, 100, 255, THRESH_BINARY);
         return binary;
     }
 
