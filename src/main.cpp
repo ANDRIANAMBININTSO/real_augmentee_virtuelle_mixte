@@ -28,7 +28,7 @@ int main() {
     
     
     // pour ouvrir la caméra 
-    //Video video(0);
+    //Video video(1);
     // pour ouvir une vidéo 
     Video video("../input/input_1.mp4");
     

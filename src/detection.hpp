@@ -14,4 +14,5 @@ namespace detection {
     bool findLargestContour(const Mat& binary, vector<Point>& largest);
     void drawSheet(Mat& frame, const vector<Point2f>& corners);
 }
+
 #endif

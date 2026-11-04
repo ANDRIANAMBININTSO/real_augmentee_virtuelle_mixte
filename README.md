@@ -22,13 +22,20 @@ Prochaines étapes : Structurer le code, créer des points virtuels et tester la
 
 Une fois qu'on a les points de contours(sous forme de tableau de points), ils sont approximés avec un polygone(ici un quadrilatère).
 - La fonction **approxPolyDP** nous permet d'obtenir les 4 coins du quadrilatère.
-- Les 4 coins sont ensuite triés par la fonction **sortcorners**.
+- Les 4 coins sont ensuite triés par la fonction **sortcorners**. Les coins sont mal triés une fois que la feuille est retournée, il faut l'améliorer.
 
 ![tri de coins](images/tri_coins.png)
-# Etape 3 : Placer le repère
+
 
 # Etape intermédiaire : Ranger le code
 Voici comment nous avons rangé le code:
 - Une classe dédiée pour gérer le flux vidéo (caméra ou fichier local).
 - Des fichiers qui regroupent toutes les fonctions permettant : la détection de la feuille, le tri des coins, etc.
 - Un fichier main qui initiliase le contexte OpenGL et qui contient lance tout.
+
+# Etape 3 : Améliorer la détection et placer le repère
+Une fois le code rangé, on a améliorer la détection et placer le repère.
+- Pour améliorer la détection, nous avons simplifier le problème. En effet, nous émettons l'hypothèse que la feuille blanche sera toujours placée plus ou moins au milieu de la feuille. Pour l'implémenter dans notre pipeline de détection nous avons utilisé une condition **touchesBorder**.
+-Nous avons également améliorer le tri de coins. En effet, initialement les coins détectés changeaient de numéros une fois la feuille tournée, nous avons améliorer cela en considérant aussi les coins détectés de la précédente frame.
+-Ensuite nous avons placer le repère au milieu de la feuille.
+![repere](images/repere.png)
