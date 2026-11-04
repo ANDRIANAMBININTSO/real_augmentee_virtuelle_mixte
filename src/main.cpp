@@ -17,7 +17,7 @@ int main() {
         return 1;
     }
     
-    GLFWwindow* window = glfwCreateWindow(1280, 720, "Hello", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1280, 720, "main", NULL, NULL);
     if (!window) {
         fprintf(stderr, "ERROR: could not open window with GLFW3\n");
         glfwTerminate();
@@ -30,7 +30,7 @@ int main() {
     // pour ouvrir la caméra 
     //Video video(1);
     // pour ouvir une vidéo 
-    Video video("../input/input_1.mp4");
+    Video video("../input/input_tourne.mp4");
     
     // checker les fps de la video : 30 fps
     double fps = video.fps();
@@ -55,6 +55,8 @@ int main() {
     double dureeFrame = 1.0/fps;
     Mat frame;
     Mat binary;
+    vector<Point2f> prevCorners;
+    
     // tant qu'on ne ferme pas la fenêtre 
     while (!glfwWindowShouldClose(window)) {
         glClear(GL_COLOR_BUFFER_BIT);
@@ -78,7 +80,6 @@ int main() {
         
             //Si on arrive à trouver le contour le plus grand(la feuille)
             vector<Point> largest;
-            vector<Point2f> prevCorners;
             if (detection::findLargestContour(binary, largest)) {
                 //On cherche les coins
                 vector<Point2f> corners = detection::findCorners(largest, prevCorners);
@@ -96,12 +97,15 @@ int main() {
                 Point3f sheetCenter(0.f, 0.f, 0.f);
                 
                 double f = frame.cols;
+                // Matrice de la caméra
                 Mat cameraMatrix = (Mat_<double>(3,3) <<
                     f, 0, frame.cols / 2.0,
                     0, f, frame.rows / 2.0,
                     0, 0, 1);
 
+                // Matrice de distorsion (pas de distorsion)
                 Mat distCoeffs = Mat::zeros(4, 1, CV_64F);
+                // Matrices de rotation et de translation
                 Mat rvec, tvec;
                 // transforme le 2D en 3D pour la caméra
                 bool is2D = solvePnP(virtualPoints, corners, cameraMatrix, distCoeffs, rvec, tvec);
