@@ -8,8 +8,8 @@ using namespace cv;
 using namespace std;
 
 namespace detection {
-    vector<Point2f> sortCorners(const vector<Point2f>& pts);
-    vector<Point2f> findCorners(const vector<Point>& contour);
+    vector<Point2f> sortCorners(vector<Point2f>& pts, vector<Point2f>& prevPts);
+    vector<Point2f> findCorners(const vector<Point>& contour, vector<Point2f>& prevPts);
     Mat segmentSheet(const Mat& frame);
     bool findLargestContour(const Mat& binary, vector<Point>& largest);
     void drawSheet(Mat& frame, const vector<Point2f>& corners);

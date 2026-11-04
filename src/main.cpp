@@ -1,5 +1,6 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include <opencv2/calib3d.hpp>
 #include "detection.hpp"
 #include "video.hpp"
 
@@ -16,7 +17,7 @@ int main() {
         return 1;
     }
     
-    GLFWwindow* window = glfwCreateWindow(1280, 720, "Hello", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1280, 720, "main", NULL, NULL);
     if (!window) {
         fprintf(stderr, "ERROR: could not open window with GLFW3\n");
         glfwTerminate();
@@ -29,7 +30,7 @@ int main() {
     // pour ouvrir la caméra 
     //Video video(0);
     // pour ouvir une vidéo 
-    Video video("../input/input_1.mp4");
+    Video video("../input/input_tourne.mp4");
     
     // checker les fps de la video : 30 fps
     double fps = video.fps();
@@ -54,6 +55,8 @@ int main() {
     double dureeFrame = 1.0/fps;
     Mat frame;
     Mat binary;
+    vector<Point2f> prevCorners;
+    
     // tant qu'on ne ferme pas la fenêtre 
     while (!glfwWindowShouldClose(window)) {
         glClear(GL_COLOR_BUFFER_BIT);
@@ -63,7 +66,7 @@ int main() {
         // on doit changer d'image
         if (currentTime - lastFrameTime >= dureeFrame) {
             // on stocke l'image dans une matrice
-            if (!(video.read(frame))) {
+            if (!(video.read(frame, true))) {
                 break;
             }
             //lastFrameTime = currentTime; // on ne fait pas ça car ça ne nous permet pas de rattraper le retard s'il y en a
@@ -71,16 +74,48 @@ int main() {
         
             //Traitement complet d'une frame
             binary = detection::segmentSheet(frame);
+            // affichage de la video en binaire
+            cv::imshow("binary", binary);
+
         
             //Si on arrive à trouver le contour le plus grand(la feuille)
             vector<Point> largest;
             if (detection::findLargestContour(binary, largest)) {
                 //On cherche les coins
-                vector<Point2f> corners = detection::findCorners(largest);
+                vector<Point2f> corners = detection::findCorners(largest, prevCorners);
                 //On les dessine
                 detection::drawSheet(frame, corners);
+
+
+                // création des points virtuels
+                vector <Point3f> virtualPoints = {
+                    {-148.5f, 105.f, 0.f}, // point haut gauche
+                    {148.5f, 105.f, 0.f}, // point haut droite
+                    {148.5f, -105.f, 0.f}, // point bas droite
+                    {-148.5f, -105.f, 0.f} // point bas gauche
+                };
+                Point3f sheetCenter(0.f, 0.f, 0.f);
+                
+                double f = frame.cols;
+                // Matrice de la caméra
+                Mat cameraMatrix = (Mat_<double>(3,3) <<
+                    f, 0, frame.cols / 2.0,
+                    0, f, frame.rows / 2.0,
+                    0, 0, 1);
+
+                // Matrice de distorsion (pas de distorsion)
+                Mat distCoeffs = Mat::zeros(4, 1, CV_64F);
+                // Matrices de rotation et de translation
+                Mat rvec, tvec;
+                // transforme le 2D en 3D pour la caméra
+                bool is2D = solvePnP(virtualPoints, corners, cameraMatrix, distCoeffs, rvec, tvec);
+
+                if (is2D)
+                    // dessin du repère
+                    drawFrameAxes(frame, cameraMatrix, distCoeffs, rvec, tvec, 100.f);
             }
-        
+
+
             // OpenGL a l'origine en bas, OpenCV en haut : on retourne l'image juste avant l'envoi
             cv::flip(frame, frame, 0);
         
