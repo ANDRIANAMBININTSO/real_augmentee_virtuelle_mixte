@@ -100,6 +100,38 @@ namespace detection {
         }
     }
 }
+namespace detection_amelioree{
+    Mat segmentSheet(const Mat& frame){
+        Mat frame_HSV, frame_blurred, frame_threshold;
+        GaussianBlur(frame, frame_blurred, Size(9,9), 0);
+        // Convert from BGR to HSV colorspace
+        cvtColor(frame_blurred, frame_HSV, COLOR_BGR2HSV);
+        // Detect the object based on HSV Range Values
+        //inRange(frame_HSV, Scalar(low_H, low_S, low_V), Scalar(high_H, high_S, high_V), frame_threshold);
+        
+        Mat channels[3];
+        split(frame_HSV, channels);
+
+        // H et S :
+        Mat mask_H, mask_S, mask_V;
+        
+        inRange(channels[0], 0, 180, mask_H);
+        inRange(channels[1], 0, 80, mask_S);
+        //inRange(channels[2], 200, 255, mask_V);
+
+        // HSV : seuillage automatique Otsu
+        
+        //threshold(channels[0], mask_H, 0, 180, THRESH_BINARY | THRESH_OTSU);
+        //threshold(channels[1], mask_S, 0, 120, THRESH_BINARY | THRESH_OTSU);
+        threshold(channels[2], mask_V, 100, 215, THRESH_BINARY | THRESH_OTSU);
+
+        // Combinaison des trois masques
+        bitwise_and(mask_H, mask_S, frame_threshold);
+        bitwise_and(frame_threshold, mask_V, frame_threshold);    
+
+        return frame_threshold;
+    }
+}
 
 
 
