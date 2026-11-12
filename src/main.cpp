@@ -151,13 +151,30 @@ int main() {
 
                 // création des points virtuels, coordonnées locales
                 vector<Point3f> virtualPoints = {
+                    // face fond (z=0)
                     {-148.5f, 105.f, 0.f}, // point haut gauche
-                    {148.5f, 105.f, 0.f}, // point haut droite
+                    {148.5f, 105.f, 0.f},  // point haut droite
                     {148.5f, -105.f, 0.f}, // point bas droite
-                    {-148.5f, -105.f, 0.f} // point bas gauche
+                    {-148.5f, -105.f, 0.f}, // point bas gauche
+
+                    // face dessus (z=5)
+                    {-148.5f, 105.f, 5.f}, // point haut gauche
+                    {148.5f, 105.f, 5.f},  // point haut droite
+                    {148.5f, -105.f, 5.f}, // point bas droitet
+                    {-148.5f, -105.f, 5.f} // point bas gauche
                 };
+
+                // points virtuels associés aux points réels
+                vector<Point3f> objectPoints = {
+                    // face fond
+                    {-148.5f, 105.f, 0.f}, // point haut gauche
+                    {148.5f, 105.f, 0.f},  // point haut droite
+                    {148.5f, -105.f, 0.f}, // point bas droite
+                    {-148.5f, -105.f, 0.f},// point bas gauche
+                };
+
                 Point3f sheetCenter(0.f, 0.f, 0.f);
-                
+
                 double f = frame.cols;
                 // Matrice de la caméra
                 Mat cameraMatrix = (Mat_<double>(3,3) <<
@@ -169,8 +186,9 @@ int main() {
                 Mat distCoeffs = Mat::zeros(4, 1, CV_64F);
                 // Matrices de rotation et de translation
                 Mat rvec, tvec;
-                // transforme le 2D en 3D pour la caméra
-                bool is2D = solvePnP(virtualPoints, corners, cameraMatrix, distCoeffs, rvec, tvec);
+                // estime la pose entre les points 3D et 2D
+                //cout << "corners : " << corners.size() << endl;
+                bool is2D = solvePnP(objectPoints, corners, cameraMatrix, distCoeffs, rvec, tvec);
 
                 if (is2D) {
                     // dessin du repère
@@ -181,12 +199,25 @@ int main() {
                     projectPoints(virtualPoints, rvec, tvec, cameraMatrix, distCoeffs, pixels);
                     // on récupère une liste de coordonnées 2D, une par points 3D
                     // il nous reste plus qu'a les dessiner
-                    vector<Point> poly(pixels.begin(), pixels.end());
-                    fillConvexPoly(virtualFrame, poly, Scalar(0,0,255));
+                    vector<Point> pts(pixels.begin(), pixels.end());
+                    // on sépare en 6 face pour remplir avec fillConvexPoly correctement
+                    vector<vector<Point>> faces = {
+                        {pts[0], pts[1], pts[2], pts[3]}, // Face du fond (z = 0)
+                        {pts[4], pts[5], pts[6], pts[7]}, // Face du dessus (z = 5)
+                        {pts[0], pts[1], pts[5], pts[4]}, // Face latérale haute
+                        {pts[1], pts[2], pts[6], pts[5]}, // Face latérale droite
+                        {pts[2], pts[3], pts[7], pts[6]}, // Face latérale basse
+                        {pts[3], pts[0], pts[4], pts[7]}  // Face latérale gauche
+                    };   
+                    for (int i = 0; i < faces.size(); ++i) {
+                        if (i==0 || i==1)
+                            fillConvexPoly(virtualFrame, faces[i], Scalar(0, 0, 100));    
+                        else 
+                            fillConvexPoly(virtualFrame, faces[i], Scalar(0, 0, 255));                        
+                    }
                 }
             }
         }
-       
         drawImage(window, mainTexture, frame);
         drawImage(virtualWindow, virtualTexture, virtualFrame);
         // récupère les évènement (clics, souris, etc)
