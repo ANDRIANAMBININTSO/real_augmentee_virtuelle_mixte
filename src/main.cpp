@@ -69,6 +69,28 @@ void drawImage(GLFWwindow* w, GLuint tex, const Mat& f) {
     glfwSwapBuffers(w);
 }
 
+void createPolygon(const Mat& frame, const Mat& rvec, const Mat& tvec, const Mat& cameraMatrix, const Mat& distCoeffs, vector<Point3f> virtualPoints, Scalar color) {
+
+    vector<Point2f> pixel;
+    // application de la formule P_cam = R · P_obj + t avec correctionde distorsion et conversion en pixels
+    projectPoints(virtualPoints, rvec, tvec, cameraMatrix, distCoeffs, pixel);
+    // on récupère une liste de coordonnées 2D, une par points 3D
+    // il nous reste plus qu'a les dessiner
+    vector<Point> pts(pixel.begin(), pixel.end());
+    // on sépare en 6 face pour remplir avec fillConvexPoly correctement
+    vector<vector<Point>> faces = {
+        {pts[0], pts[1], pts[2], pts[3]}, // Face du fond
+        {pts[4], pts[5], pts[6], pts[7]}, // Face du dessus 
+        {pts[0], pts[1], pts[5], pts[4]}, // Face latérale haute 
+        {pts[1], pts[2], pts[6], pts[5]}, // Face latérale droite
+        {pts[2], pts[3], pts[7], pts[6]}, // Face latérale basse 
+        {pts[3], pts[0], pts[4], pts[7]}  // Face latérale gauche
+    };
+    for (int i = 0; i < faces.size(); ++i) {
+        fillConvexPoly(frame, faces[i], color);                          
+    } 
+}
+
 
 
 int main() {
@@ -193,28 +215,60 @@ int main() {
                 if (is2D) {
                     // dessin du repère
                     drawFrameAxes(frame, cameraMatrix, distCoeffs, rvec, tvec, 100.f);
+                    // dessin du plan
+                    createPolygon(virtualFrame, rvec, tvec, cameraMatrix, distCoeffs, virtualPoints, Scalar(255,255,255));
 
-                    // application de la formule P_cam = R · P_obj + t avec correctionde distorsion et conversion en pixels
-                    vector<Point2f> pixels;
-                    projectPoints(virtualPoints, rvec, tvec, cameraMatrix, distCoeffs, pixels);
-                    // on récupère une liste de coordonnées 2D, une par points 3D
-                    // il nous reste plus qu'a les dessiner
-                    vector<Point> pts(pixels.begin(), pixels.end());
-                    // on sépare en 6 face pour remplir avec fillConvexPoly correctement
-                    vector<vector<Point>> faces = {
-                        {pts[0], pts[1], pts[2], pts[3]}, // Face du fond (z = 0)
-                        {pts[4], pts[5], pts[6], pts[7]}, // Face du dessus (z = 5)
-                        {pts[0], pts[1], pts[5], pts[4]}, // Face latérale haute
-                        {pts[1], pts[2], pts[6], pts[5]}, // Face latérale droite
-                        {pts[2], pts[3], pts[7], pts[6]}, // Face latérale basse
-                        {pts[3], pts[0], pts[4], pts[7]}  // Face latérale gauche
-                    };   
-                    for (int i = 0; i < faces.size(); ++i) {
-                        if (i==0 || i==1)
-                            fillConvexPoly(virtualFrame, faces[i], Scalar(0, 0, 100));    
-                        else 
-                            fillConvexPoly(virtualFrame, faces[i], Scalar(0, 0, 255));                        
+                    // points de chaque murs du contour du labyrinthe 
+                    vector<vector<Point3f>> contourWalls {
+                        // mur du haut
+                        {{-148.5f, 106.f, 0.f},
+                        {148.5f, 106.f, 0.f},
+                        {148.5f, 104.f, 0.f},
+                        {-148.5f, 104.f, 0.f},
+
+                        {-148.5f, 106.f, 40.f},
+                        {148.5f, 106.f, 40.f},
+                        {148.5f, 104.f, 40.f},
+                        {-148.5f, 104.f, 40.f}},
+                        
+                        // mur a droite
+                        {{147.5f, 106.f, 0.f},
+                        {149.5f, 106.f, 0.f},
+                        {149.5f, -106.f, 0.f},
+                        {147.5f, -106.f, 0.f},
+
+                        {147.5f, 106.f, 40.f},
+                        {149.5f, 106.f, 40.f},
+                        {149.5f, -106.f, 40.f},
+                        {147.5f, -106.f, 40.f}},
+                        
+                        // mur du bas
+                        {{-148.5f, -104.f, 0.f},
+                        {148.5f, -104.f, 0.f},
+                        {148.5f, -106.f, 0.f},
+                        {-148.5f, -106.f, 0.f},
+
+                        {-148.5f, -104.f, 40.f},
+                        {148.5f, -104.f, 40.f},
+                        {148.5f, -106.f, 40.f},
+                        {-148.5f, -106.f, 40.f}},
+                        
+                        // mur a gauche
+                        {{-149.5f, 106.f, 0.f},
+                        {-147.5f, 106.f, 0.f},
+                        {-147.5f, -106.f, 0.f},
+                        {-149.5f, -106.f, 0.f},
+
+                        {-149.5f, 106.f, 40.f},
+                        {-147.5f, 106.f, 40.f},
+                        {-147.5f, -106.f, 40.f},
+                        {-149.5f, -106.f, 40.f}}                     
+                    };
+                    // dessin des contours
+                    for(vector<Point3f> p : contourWalls) {
+                        createPolygon(virtualFrame, rvec, tvec, cameraMatrix, distCoeffs, p, Scalar(230, 216, 173));
                     }
+
                 }
             }
         }
